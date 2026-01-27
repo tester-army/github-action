@@ -1,7 +1,7 @@
 import * as core from '@actions/core';
-import { TesterArmyClient } from './tester-army.js';
+import { createClient } from './tester-army.js';
 import { getGitHubContext, formatSummary } from './github.js';
-import type { ActionInputs, TestCredentials } from './types.js';
+import type { ActionInputs, TestCredentials, CITestRequest } from './types.js';
 
 function getInputs(): ActionInputs {
   const apiKey = core.getInput('api-key', { required: true });
@@ -45,17 +45,24 @@ async function run(): Promise<void> {
     core.info(`Commit: ${context.sha.substring(0, 7)}`);
     core.info(`Timeout: ${inputs.timeout}ms`);
 
-    const client = new TesterArmyClient(inputs.apiKey);
+    const client = createClient(inputs.apiKey, { timeout: inputs.timeout });
 
-    const result = await client.runTests({
+    // TODO: In production, deploymentUrl comes from deployment extraction
+    // and prContext comes from PR context fetching
+    const request: CITestRequest = {
+      deploymentUrl: 'https://preview.example.com', // Placeholder
+      prContext: {
+        title: 'PR Title', // Placeholder
+        description: 'PR Description', // Placeholder
+        changedFiles: [], // Placeholder
+      },
       credentials,
-      timeout: inputs.timeout,
-      context,
-    });
+    };
+
+    const result = await client.runCITest(request);
 
     // Set outputs
     core.setOutput('result', result.status);
-    core.setOutput('report-url', result.reportUrl);
     core.setOutput('summary', result.summary);
 
     // Write job summary
@@ -64,7 +71,7 @@ async function run(): Promise<void> {
       result.passedTests,
       result.failedTests,
       result.totalTests,
-      result.reportUrl
+      '' // No reportUrl in new response
     );
     await core.summary.addRaw(summary).write();
 
@@ -73,11 +80,12 @@ async function run(): Promise<void> {
     core.info(`   Status: ${result.status}`);
     core.info(`   Passed: ${result.passedTests}/${result.totalTests}`);
     core.info(`   Duration: ${result.duration}ms`);
-    core.info(`   Report: ${result.reportUrl}`);
 
     // Handle failure
     if (result.status !== 'passed' && inputs.failOnError) {
-      core.setFailed(`Tests failed: ${result.failedTests} of ${result.totalTests} tests failed`);
+      core.setFailed(
+        `Tests failed: ${result.failedTests} of ${result.totalTests} tests failed`
+      );
     }
   } catch (error) {
     if (error instanceof Error) {

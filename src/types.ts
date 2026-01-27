@@ -39,3 +39,78 @@ export interface TesterArmyError {
   message: string;
   details?: Record<string, unknown>;
 }
+
+// New types for CI Test endpoint
+
+export interface CITestRequest {
+  deploymentUrl: string;
+  prContext: {
+    title: string;
+    description: string;
+    changedFiles: string[];
+  };
+  credentials?: {
+    email: string;
+    password: string;
+  };
+}
+
+export interface CITestResponse {
+  id: string;
+  status: 'passed' | 'failed' | 'error';
+  summary: string;
+  details: string;
+  screenshots: string[];
+  playwrightCode?: string;
+  duration: number;
+  passedTests: number;
+  failedTests: number;
+  totalTests: number;
+}
+
+// Typed API errors
+export class TesterArmyAPIError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: number,
+    public readonly code?: string
+  ) {
+    super(message);
+    this.name = 'TesterArmyAPIError';
+  }
+}
+
+export class BadRequestError extends TesterArmyAPIError {
+  constructor(message: string) {
+    super(message, 400, 'BAD_REQUEST');
+    this.name = 'BadRequestError';
+  }
+}
+
+export class UnauthorizedError extends TesterArmyAPIError {
+  constructor(message: string) {
+    super(message, 401, 'UNAUTHORIZED');
+    this.name = 'UnauthorizedError';
+  }
+}
+
+export class RateLimitError extends TesterArmyAPIError {
+  constructor(message: string, public readonly retryAfter?: number) {
+    super(message, 429, 'RATE_LIMITED');
+    this.name = 'RateLimitError';
+  }
+}
+
+export class TimeoutError extends TesterArmyAPIError {
+  constructor(message: string) {
+    super(message, 504, 'TIMEOUT');
+    this.name = 'TimeoutError';
+  }
+}
+
+export class ServerError extends TesterArmyAPIError {
+  constructor(message: string, statusCode: number) {
+    super(message, statusCode, 'SERVER_ERROR');
+    this.name = 'ServerError';
+  }
+}
