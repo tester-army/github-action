@@ -1,0 +1,37 @@
+name: 'Tester Army'
+description: 'Run automated tests with Tester Army AI testers'
+author: 'Tester Army'
+branding:
+  icon: 'check-circle'
+  color: 'purple'
+
+inputs:
+  api-key:
+    description: 'Tester Army API key'
+    required: true
+  credentials-email:
+    description: 'Email for authenticated testing'
+    required: false
+  credentials-password:
+    description: 'Password for authenticated testing'
+    required: false
+  timeout:
+    description: 'Test timeout in milliseconds (max 300000)'
+    required: false
+    default: '180000'
+  fail-on-error:
+    description: 'Fail the workflow if tests fail'
+    required: false
+    default: 'true'
+
+outputs:
+  result:
+    description: 'Test result status (passed/failed)'
+  report-url:
+    description: 'URL to the full test report'
+  summary:
+    description: 'Brief summary of test results'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
