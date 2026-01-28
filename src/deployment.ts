@@ -16,6 +16,16 @@ export interface DeploymentInfo {
 }
 
 /**
+ * Deployment status payload structure from GitHub webhook
+ */
+interface DeploymentStatusPayload {
+  state?: string;
+  target_url?: string;
+  environment?: string;
+  description?: string;
+}
+
+/**
  * Vercel URL patterns for detection
  */
 const VERCEL_URL_PATTERNS = [
@@ -26,15 +36,38 @@ const VERCEL_URL_PATTERNS = [
 ];
 
 /**
- * Check if a URL is a Vercel deployment
+ * Validates a URL string and returns the parsed URL if valid
+ *
+ * @param url - The URL string to validate
+ * @returns The parsed URL object if valid, null otherwise
+ */
+function parseUrl(url: string): URL | null {
+  try {
+    return new URL(url);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if a parsed URL is a Vercel deployment
+ *
+ * @param parsedUrl - The parsed URL object to check
+ * @returns true if the URL matches a Vercel deployment pattern
+ */
+function isVercelUrl(parsedUrl: URL): boolean {
+  return VERCEL_URL_PATTERNS.some((pattern) => pattern.test(parsedUrl.hostname));
+}
+
+/**
+ * Check if a URL string is a Vercel deployment
+ *
+ * @param url - The URL string to check
+ * @returns true if the URL matches a Vercel deployment pattern
  */
 export function isVercelDeployment(url: string): boolean {
-  try {
-    const parsed = new URL(url);
-    return VERCEL_URL_PATTERNS.some((pattern) => pattern.test(parsed.hostname));
-  } catch {
-    return false;
-  }
+  const parsed = parseUrl(url);
+  return parsed !== null && isVercelUrl(parsed);
 }
 
 /**
@@ -60,12 +93,7 @@ export function extractDeploymentInfo(
     return null;
   }
 
-  const deploymentStatus = payload.deployment_status as {
-    state?: string;
-    target_url?: string;
-    environment?: string;
-    description?: string;
-  };
+  const deploymentStatus = payload.deployment_status as DeploymentStatusPayload;
 
   // Only process successful deployments
   const state = deploymentStatus.state;
@@ -81,10 +109,9 @@ export function extractDeploymentInfo(
     return null;
   }
 
-  // Validate URL format
-  try {
-    new URL(targetUrl);
-  } catch {
+  // Validate URL format and check if it's Vercel in one parse
+  const parsedUrl = parseUrl(targetUrl);
+  if (!parsedUrl) {
     core.warning(`Invalid target_url format: ${targetUrl}`);
     return null;
   }
@@ -103,8 +130,8 @@ export function extractDeploymentInfo(
     core.debug('Using context.sha as deployment.sha was not available');
   }
 
-  // Check if it's a Vercel deployment
-  const isVercel = isVercelDeployment(targetUrl);
+  // Check if it's a Vercel deployment (reuses already parsed URL)
+  const isVercel = isVercelUrl(parsedUrl);
 
   core.info(`Extracted deployment info: ${targetUrl} (${environment})`);
   core.debug(`SHA: ${sha}, Vercel: ${isVercel}`);
@@ -115,45 +142,4 @@ export function extractDeploymentInfo(
     sha,
     isVercel,
   };
-}
-
-/**
- * Creates a mock context for testing purposes
- */
-export function createMockContext(options: {
-  state: string;
-  targetUrl?: string;
-  environment?: string;
-  sha?: string;
-  eventName?: string;
-}): typeof github.context {
-  return {
-    eventName: options.eventName ?? 'deployment_status',
-    sha: options.sha ?? 'abc123def456',
-    ref: 'refs/heads/main',
-    actor: 'test-user',
-    repo: { owner: 'test-owner', repo: 'test-repo' },
-    runId: 12345,
-    runNumber: 1,
-    runAttempt: 1,
-    job: 'test-job',
-    action: 'test-action',
-    workflow: 'test-workflow',
-    issue: { owner: 'test-owner', repo: 'test-repo', number: 1 },
-    payload: {
-      deployment_status: {
-        state: options.state,
-        target_url: options.targetUrl,
-        environment: options.environment,
-        description: 'Deployment completed',
-      },
-      deployment: {
-        sha: options.sha ?? 'abc123def456',
-        ref: 'feature/test-branch',
-      },
-    },
-    apiUrl: 'https://api.github.com',
-    serverUrl: 'https://github.com',
-    graphqlUrl: 'https://api.github.com/graphql',
-  } as typeof github.context;
 }

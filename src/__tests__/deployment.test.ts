@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as github from '@actions/github';
 import {
   extractDeploymentInfo,
   isVercelDeployment,
-  createMockContext,
   type DeploymentInfo,
 } from '../deployment.js';
 import * as core from '@actions/core';
@@ -13,6 +13,47 @@ vi.mock('@actions/core', () => ({
   info: vi.fn(),
   warning: vi.fn(),
 }));
+
+/**
+ * Creates a mock context for testing purposes
+ */
+function createMockContext(options: {
+  state: string;
+  targetUrl?: string;
+  environment?: string;
+  sha?: string;
+  eventName?: string;
+}): typeof github.context {
+  return {
+    eventName: options.eventName ?? 'deployment_status',
+    sha: options.sha ?? 'abc123def456',
+    ref: 'refs/heads/main',
+    actor: 'test-user',
+    repo: { owner: 'test-owner', repo: 'test-repo' },
+    runId: 12345,
+    runNumber: 1,
+    runAttempt: 1,
+    job: 'test-job',
+    action: 'test-action',
+    workflow: 'test-workflow',
+    issue: { owner: 'test-owner', repo: 'test-repo', number: 1 },
+    payload: {
+      deployment_status: {
+        state: options.state,
+        target_url: options.targetUrl,
+        environment: options.environment,
+        description: 'Deployment completed',
+      },
+      deployment: {
+        sha: options.sha ?? 'abc123def456',
+        ref: 'feature/test-branch',
+      },
+    },
+    apiUrl: 'https://api.github.com',
+    serverUrl: 'https://github.com',
+    graphqlUrl: 'https://api.github.com/graphql',
+  } as typeof github.context;
+}
 
 describe('isVercelDeployment', () => {
   it('should detect .vercel.app URLs', () => {
@@ -87,9 +128,11 @@ describe('extractDeploymentInfo', () => {
 
       const result = extractDeploymentInfo(context);
 
-      expect(result).not.toBeNull();
-      expect(result!.url).toBe('https://preview.mycompany.com');
-      expect(result!.isVercel).toBe(false);
+      if (result === null) {
+        throw new Error('Expected result to not be null');
+      }
+      expect(result.url).toBe('https://preview.mycompany.com');
+      expect(result.isVercel).toBe(false);
     });
 
     it('should extract Production environment', () => {
@@ -101,8 +144,10 @@ describe('extractDeploymentInfo', () => {
 
       const result = extractDeploymentInfo(context);
 
-      expect(result).not.toBeNull();
-      expect(result!.environment).toBe('Production');
+      if (result === null) {
+        throw new Error('Expected result to not be null');
+      }
+      expect(result.environment).toBe('Production');
     });
   });
 
@@ -169,8 +214,10 @@ describe('extractDeploymentInfo', () => {
 
       const result = extractDeploymentInfo(context);
 
-      expect(result).not.toBeNull();
-      expect(result!.isVercel).toBe(false);
+      if (result === null) {
+        throw new Error('Expected result to not be null');
+      }
+      expect(result.isVercel).toBe(false);
     });
 
     it('should identify custom domain deployments as non-Vercel', () => {
@@ -181,8 +228,10 @@ describe('extractDeploymentInfo', () => {
 
       const result = extractDeploymentInfo(context);
 
-      expect(result).not.toBeNull();
-      expect(result!.isVercel).toBe(false);
+      if (result === null) {
+        throw new Error('Expected result to not be null');
+      }
+      expect(result.isVercel).toBe(false);
     });
   });
 
@@ -225,8 +274,10 @@ describe('extractDeploymentInfo', () => {
 
       const result = extractDeploymentInfo(context);
 
-      expect(result).not.toBeNull();
-      expect(result!.environment).toBe('unknown');
+      if (result === null) {
+        throw new Error('Expected result to not be null');
+      }
+      expect(result.environment).toBe('unknown');
     });
 
     it('should fallback to context.sha when deployment.sha is missing', () => {
@@ -239,8 +290,10 @@ describe('extractDeploymentInfo', () => {
 
       const result = extractDeploymentInfo(context);
 
-      expect(result).not.toBeNull();
-      expect(result!.sha).toBe(context.sha);
+      if (result === null) {
+        throw new Error('Expected result to not be null');
+      }
+      expect(result.sha).toBe(context.sha);
     });
 
     it('should return null for invalid URL format', () => {
@@ -278,11 +331,13 @@ describe('extractDeploymentInfo', () => {
 
       const result = extractDeploymentInfo(context);
 
-      expect(result).not.toBeNull();
-      expect(result!.url).toBe(
+      if (result === null) {
+        throw new Error('Expected result to not be null');
+      }
+      expect(result.url).toBe(
         'https://my-app-abc123.vercel.app/dashboard?tab=settings'
       );
-      expect(result!.isVercel).toBe(true);
+      expect(result.isVercel).toBe(true);
     });
 
     it('should handle URLs with ports', () => {
@@ -293,8 +348,10 @@ describe('extractDeploymentInfo', () => {
 
       const result = extractDeploymentInfo(context);
 
-      expect(result).not.toBeNull();
-      expect(result!.isVercel).toBe(true);
+      if (result === null) {
+        throw new Error('Expected result to not be null');
+      }
+      expect(result.isVercel).toBe(true);
     });
   });
 });
