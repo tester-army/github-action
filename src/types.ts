@@ -35,18 +35,17 @@ export interface TestResult {
 }
 
 export interface TesterArmyError {
-  code: string;
+  error: string;
   message: string;
-  details?: Record<string, unknown>;
 }
 
 // New types for CI Test endpoint
 
 export interface CITestRequest {
-  deploymentUrl: string;
-  prContext: {
+  url: string;
+  context: {
     title: string;
-    description: string;
+    description?: string;
     changedFiles: string[];
   };
   credentials?: {
@@ -56,16 +55,19 @@ export interface CITestRequest {
 }
 
 export interface CITestResponse {
-  id: string;
-  status: 'passed' | 'failed' | 'error';
-  summary: string;
-  details: string;
-  screenshots: string[];
-  playwrightCode?: string;
+  output: {
+    featureName: string;
+    result: 'PASS' | 'FAILED';
+    description: string;
+    screenshots: string[];
+    playwrightCode: string;
+  };
+  testPlan: {
+    instructions: string;
+    focusAreas: string[];
+    complexity: 'simple' | 'moderate' | 'complex';
+  };
   duration: number;
-  passedTests: number;
-  failedTests: number;
-  totalTests: number;
 }
 
 // Typed API errors

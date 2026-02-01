@@ -7,7 +7,7 @@ import {
 } from './types.js';
 import type { CITestRequest, CITestResponse, TesterArmyError } from './types.js';
 
-const DEFAULT_BASE_URL = 'https://api.testerarmy.com';
+const DEFAULT_BASE_URL = 'https://tester.army';
 const DEFAULT_TIMEOUT = 300000; // 5 minutes
 const MAX_RETRIES = 2;
 const INITIAL_RETRY_DELAY = 1000; // 1 second

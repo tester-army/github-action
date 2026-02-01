@@ -12,8 +12,8 @@ describe('TesterArmyClient', () => {
   });
 
   const testRequest: CITestRequest = {
-    deploymentUrl: 'https://preview.example.com',
-    prContext: {
+    url: 'https://preview.example.com',
+    context: {
       title: 'Test PR',
       description: 'Test description',
       changedFiles: ['src/index.ts'],
@@ -21,16 +21,19 @@ describe('TesterArmyClient', () => {
   };
 
   const successResponse: CITestResponse = {
-    id: 'test-123',
-    status: 'passed',
-    summary: 'All tests passed',
-    details: 'Detailed results...',
-    screenshots: ['https://example.com/screenshot1.png'],
-    playwrightCode: 'test("example", async () => {});',
+    output: {
+      featureName: 'Login flow',
+      result: 'PASS',
+      description: 'All tests passed',
+      screenshots: ['https://example.com/screenshot1.png'],
+      playwrightCode: 'test("example", async () => {});',
+    },
+    testPlan: {
+      instructions: 'Test the login form',
+      focusAreas: ['auth'],
+      complexity: 'simple',
+    },
     duration: 5000,
-    passedTests: 3,
-    failedTests: 0,
-    totalTests: 3,
   };
 
   describe('successful API call', () => {
@@ -45,7 +48,7 @@ describe('TesterArmyClient', () => {
 
       expect(result).toEqual(successResponse);
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.testerarmy.com/api/v1/ci/test',
+        'https://tester.army/api/v1/ci/test',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
