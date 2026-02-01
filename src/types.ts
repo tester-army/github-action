@@ -116,31 +116,3 @@ export class ServerError extends TesterArmyAPIError {
     this.name = 'ServerError';
   }
 }
-
-// CI Test types (used by checks and comments)
-
-export interface CITestRequest {
-  deploymentUrl: string;
-  prContext: {
-    title: string;
-    description: string;
-    changedFiles: string[];
-  };
-  credentials?: {
-    email: string;
-    password: string;
-  };
-}
-
-export interface CITestResponse {
-  id: string;
-  status: 'passed' | 'failed' | 'error';
-  summary: string;
-  details: string;
-  screenshots: string[];
-  playwrightCode?: string;
-  duration: number;
-  passedTests: number;
-  failedTests: number;
-  totalTests: number;
-}

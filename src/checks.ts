@@ -53,9 +53,9 @@ export async function updateCheck(
   checkRunId: number,
   result: CITestResponse
 ): Promise<void> {
-  core.debug(`Updating check #${checkRunId} with status: ${result.status}`);
+  core.debug(`Updating check #${checkRunId} with result: ${result.output.result}`);
 
-  const conclusion = result.status === 'passed' ? 'success' : 'failure';
+  const conclusion = result.output.result === 'PASS' ? 'success' : 'failure';
   const title = formatCheckTitle(result);
   const summary = formatCheckSummary(result);
   const details = formatCheckDetails(result);
@@ -87,23 +87,17 @@ export async function updateCheck(
  * Formats the check title based on test results
  */
 function formatCheckTitle(result: CITestResponse): string {
-  if (result.status === 'passed') {
-    return `Tester Army: ${result.passedTests} tests passed`;
-  }
-  if (result.failedTests > 0) {
-    return `Tester Army: ${result.failedTests} test${result.failedTests === 1 ? '' : 's'} failed`;
-  }
-  return `Tester Army: ${result.status}`;
+  return `Tester Army: ${result.output.result}`;
 }
 
 /**
  * Formats the check summary (one-line result)
  */
 function formatCheckSummary(result: CITestResponse): string {
-  const emoji = result.status === 'passed' ? '✅' : '❌';
+  const emoji = result.output.result === 'PASS' ? '✅' : '❌';
   const duration = formatDuration(result.duration);
 
-  return `${emoji} ${result.summary}\n\n**Duration:** ${duration} | **Passed:** ${result.passedTests}/${result.totalTests}`;
+  return `${emoji} ${result.output.description}\n\n**Feature:** ${result.output.featureName} | **Duration:** ${duration}`;
 }
 
 /**
@@ -113,18 +107,20 @@ function formatCheckDetails(result: CITestResponse): string {
   const sections: string[] = [];
 
   // Test details
-  if (result.details) {
-    sections.push('## Test Results\n\n' + result.details);
+  if (result.output.description) {
+    sections.push('## Test Results\n\n' + result.output.description);
   }
 
   // Screenshots
-  if (result.screenshots && result.screenshots.length > 0) {
-    sections.push('## Screenshots\n\n' + formatScreenshots(result.screenshots));
+  if (result.output.screenshots && result.output.screenshots.length > 0) {
+    sections.push(
+      '## Screenshots\n\n' + formatScreenshots(result.output.screenshots)
+    );
   }
 
   // Playwright code
-  if (result.playwrightCode) {
-    sections.push(formatPlaywrightCode(result.playwrightCode));
+  if (result.output.playwrightCode) {
+    sections.push(formatPlaywrightCode(result.output.playwrightCode));
   }
 
   return sections.join('\n\n---\n\n');
