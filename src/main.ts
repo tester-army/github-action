@@ -6,7 +6,11 @@ import { extractDeploymentInfo } from './deployment.js';
 import { fetchPRContext } from './pr-context.js';
 import { createCheck, updateCheck, updateCheckFailure } from './checks.js';
 import { postOrUpdateComment } from './comments.js';
-import type { ActionInputs, TestCredentials, CITestRequest } from './types.js';
+import type {
+  ActionInputs,
+  TestCredentials,
+  CITestRequest,
+} from './types.js';
 
 function getInputs(): ActionInputs {
   const apiKey = core.getInput('api-key', { required: true });
@@ -14,6 +18,7 @@ function getInputs(): ActionInputs {
   const credentialsPassword = core.getInput('credentials-password');
   const timeout = parseInt(core.getInput('timeout') || '180000', 10);
   const failOnError = core.getBooleanInput('fail-on-error');
+  const vercelBypassToken = core.getInput('vercel-bypass-token');
 
   // Validate timeout
   if (timeout < 1000 || timeout > 300000) {
@@ -26,6 +31,7 @@ function getInputs(): ActionInputs {
     credentialsPassword: credentialsPassword || undefined,
     timeout,
     failOnError,
+    vercelBypassToken: vercelBypassToken || undefined,
   };
 }
 
@@ -98,6 +104,7 @@ async function run(): Promise<void> {
         changedFiles: prContext.changedFiles,
       },
       credentials,
+      vercelBypassToken: inputs.vercelBypassToken,
     };
 
     let result;

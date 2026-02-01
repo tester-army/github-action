@@ -59,6 +59,7 @@ That's it! The action will automatically run tests when Vercel deployments succe
 | `credentials-password` | Password for authenticated testing | No | - |
 | `timeout` | Test timeout in milliseconds (1000-300000) | No | `180000` |
 | `fail-on-error` | Fail the workflow if tests fail | No | `true` |
+| `vercel-bypass-token` | Vercel deployment protection bypass token (preview auth) | No | - |
 
 ## Outputs
 
@@ -108,6 +109,27 @@ jobs:
           api-key: ${{ secrets.TESTER_ARMY_API_KEY }}
           credentials-email: ${{ secrets.TEST_USER_EMAIL }}
           credentials-password: ${{ secrets.TEST_USER_PASSWORD }}
+```
+
+### Vercel Preview Protection Bypass
+
+If your preview deployments require Vercel auth, create a **Protection Bypass for Automation** token in Vercel and pass it to the action:
+
+```yaml
+name: Tester Army
+
+on:
+  deployment_status:
+
+jobs:
+  test:
+    if: github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tester-army/github-action@v1
+        with:
+          api-key: ${{ secrets.TESTER_ARMY_API_KEY }}
+          vercel-bypass-token: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
 ```
 
 ### Custom Timeout
