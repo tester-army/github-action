@@ -23,6 +23,9 @@ inputs:
     description: 'Fail the workflow if tests fail'
     required: false
     default: 'true'
+  vercel-bypass-token:
+    description: 'Optional Vercel protection bypass token for preview deployments'
+    required: false
 
 outputs:
   result:

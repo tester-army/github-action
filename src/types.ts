@@ -4,6 +4,7 @@ export interface ActionInputs {
   credentialsPassword?: string;
   timeout: number;
   failOnError: boolean;
+  vercelBypassToken?: string;
 }
 
 export interface TestCredentials {
@@ -52,6 +53,7 @@ export interface CITestRequest {
     email: string;
     password: string;
   };
+  vercelBypassToken?: string;
 }
 
 export interface CITestResponse {
