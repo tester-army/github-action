@@ -76,6 +76,11 @@ async function run(): Promise<void> {
       return;
     }
 
+    if (prContext.changedFiles.length === 0) {
+      core.setFailed('PR context has no changed files; cannot build CI request');
+      return;
+    }
+
     const request: CITestRequest = {
       url: deploymentInfo.url,
       context: {
