@@ -21,22 +21,23 @@ export function getGitHubContext(): GitHubContext {
 }
 
 export function formatSummary(
-  status: string,
-  passed: number,
-  failed: number,
-  total: number,
-  reportUrl: string
+  result: string,
+  featureName: string,
+  duration: number,
+  screenshotUrl?: string
 ): string {
-  const emoji = status === 'passed' ? '✅' : '❌';
-  
+  const emoji = result === 'PASS' ? '✅' : '❌';
+  const screenshotLine = screenshotUrl
+    ? `
+
+[View Screenshot](${screenshotUrl})`
+    : '';
+
   return `${emoji} **Tester Army Results**
 
 | Metric | Value |
 |--------|-------|
-| Status | ${status} |
-| Passed | ${passed} |
-| Failed | ${failed} |
-| Total  | ${total} |
-
-[View Full Report](${reportUrl})`;
+| Result | ${result} |
+| Feature | ${featureName} |
+| Duration | ${duration}ms |${screenshotLine}`;
 }

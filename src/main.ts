@@ -1,7 +1,10 @@
 import * as core from '@actions/core';
-import { TesterArmyClient } from './tester-army.js';
+import * as github from '@actions/github';
+import { createClient } from './tester-army.js';
 import { getGitHubContext, formatSummary } from './github.js';
-import type { ActionInputs, TestCredentials } from './types.js';
+import { extractDeploymentInfo } from './deployment.js';
+import { fetchPRContext } from './pr-context.js';
+import type { ActionInputs, TestCredentials, CITestRequest } from './types.js';
 
 function getInputs(): ActionInputs {
   const apiKey = core.getInput('api-key', { required: true });
@@ -45,39 +48,77 @@ async function run(): Promise<void> {
     core.info(`Commit: ${context.sha.substring(0, 7)}`);
     core.info(`Timeout: ${inputs.timeout}ms`);
 
-    const client = new TesterArmyClient(inputs.apiKey);
+    const client = createClient(inputs.apiKey, { timeout: inputs.timeout });
 
-    const result = await client.runTests({
+    const deploymentInfo = extractDeploymentInfo(github.context);
+    if (!deploymentInfo) {
+      core.setFailed('No successful deployment_status event with target_url found');
+      return;
+    }
+
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) {
+      core.setFailed('Missing GITHUB_TOKEN for PR context lookup');
+      return;
+    }
+
+    const octokit = github.getOctokit(githubToken);
+    const { owner, repo } = github.context.repo;
+    const prContext = await fetchPRContext(
+      octokit,
+      owner,
+      repo,
+      deploymentInfo.sha
+    );
+
+    if (!prContext) {
+      core.setFailed('Unable to resolve PR context for deployment');
+      return;
+    }
+
+    if (prContext.changedFiles.length === 0) {
+      core.setFailed('PR context has no changed files; cannot build CI request');
+      return;
+    }
+
+    const request: CITestRequest = {
+      url: deploymentInfo.url,
+      context: {
+        title: prContext.title,
+        description: prContext.description,
+        changedFiles: prContext.changedFiles,
+      },
       credentials,
-      timeout: inputs.timeout,
-      context,
-    });
+    };
+
+    const result = await client.runCITest(request);
+
+    const normalizedResult =
+      result.output.result === 'PASS' ? 'passed' : 'failed';
 
     // Set outputs
-    core.setOutput('result', result.status);
-    core.setOutput('report-url', result.reportUrl);
-    core.setOutput('summary', result.summary);
+    core.setOutput('result', normalizedResult);
+    core.setOutput('summary', result.output.description);
+    core.setOutput('report-url', result.output.screenshots[0] ?? '');
 
     // Write job summary
     const summary = formatSummary(
-      result.status,
-      result.passedTests,
-      result.failedTests,
-      result.totalTests,
-      result.reportUrl
+      result.output.result,
+      result.output.featureName,
+      result.duration,
+      result.output.screenshots[0]
     );
     await core.summary.addRaw(summary).write();
 
     // Log results
     core.info(`\n📊 Test Results:`);
-    core.info(`   Status: ${result.status}`);
-    core.info(`   Passed: ${result.passedTests}/${result.totalTests}`);
+    core.info(`   Result: ${result.output.result}`);
+    core.info(`   Feature: ${result.output.featureName}`);
     core.info(`   Duration: ${result.duration}ms`);
-    core.info(`   Report: ${result.reportUrl}`);
 
     // Handle failure
-    if (result.status !== 'passed' && inputs.failOnError) {
-      core.setFailed(`Tests failed: ${result.failedTests} of ${result.totalTests} tests failed`);
+    if (result.output.result !== 'PASS' && inputs.failOnError) {
+      core.setFailed('Tests failed');
     }
   } catch (error) {
     if (error instanceof Error) {
