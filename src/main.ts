@@ -86,7 +86,7 @@ async function run(): Promise<void> {
     let checkRunId: number | undefined;
     try {
       checkRunId = await createCheck(octokit, owner, repo, deploymentInfo.sha);
-    } catch (error) {
+    } catch {
       core.warning('Continuing without check run due to create failure.');
     }
 
