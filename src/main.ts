@@ -4,6 +4,8 @@ import { createClient } from './tester-army.js';
 import { getGitHubContext, formatSummary } from './github.js';
 import { extractDeploymentInfo } from './deployment.js';
 import { fetchPRContext } from './pr-context.js';
+import { createCheck, updateCheck, updateCheckFailure } from './checks.js';
+import { postOrUpdateComment } from './comments.js';
 import type { ActionInputs, TestCredentials, CITestRequest } from './types.js';
 
 function getInputs(): ActionInputs {
@@ -52,7 +54,7 @@ async function run(): Promise<void> {
 
     const deploymentInfo = extractDeploymentInfo(github.context);
     if (!deploymentInfo) {
-      core.setFailed('No successful deployment_status event with target_url found');
+      core.info('No successful deployment_status event found. Skipping.');
       return;
     }
 
@@ -72,13 +74,20 @@ async function run(): Promise<void> {
     );
 
     if (!prContext) {
-      core.setFailed('Unable to resolve PR context for deployment');
+      core.info('No PR context found for deployment. Skipping.');
       return;
     }
 
     if (prContext.changedFiles.length === 0) {
-      core.setFailed('PR context has no changed files; cannot build CI request');
+      core.info('PR context has no changed files. Skipping.');
       return;
+    }
+
+    let checkRunId: number | undefined;
+    try {
+      checkRunId = await createCheck(octokit, owner, repo, deploymentInfo.sha);
+    } catch {
+      core.warning('Continuing without check run due to create failure.');
     }
 
     const request: CITestRequest = {
@@ -91,7 +100,39 @@ async function run(): Promise<void> {
       credentials,
     };
 
-    const result = await client.runCITest(request);
+    let result;
+    try {
+      result = await client.runCITest(request);
+    } catch (error) {
+      if (checkRunId) {
+        const message =
+          error instanceof Error ? error.message : 'Tester Army run failed';
+        try {
+          await updateCheckFailure(octokit, owner, repo, checkRunId, message);
+        } catch {
+          // Ignore check update failure
+        }
+      }
+      throw error;
+    }
+
+    if (checkRunId) {
+      await updateCheck(octokit, owner, repo, checkRunId, result);
+    }
+
+    try {
+      await postOrUpdateComment(
+        octokit,
+        owner,
+        repo,
+        prContext.number,
+        result,
+        deploymentInfo.url
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      core.warning(`Failed to post PR comment: ${message}`);
+    }
 
     const normalizedResult =
       result.output.result === 'PASS' ? 'passed' : 'failed';

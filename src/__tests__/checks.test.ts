@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createCheck, updateCheck, type Octokit } from '../checks.js';
+import { createCheck, updateCheck, updateCheckFailure, type Octokit } from '../checks.js';
 import type { CITestResponse } from '../types.js';
 import * as core from '@actions/core';
 
@@ -209,6 +209,28 @@ describe('checks', () => {
 
       expect(core.warning).toHaveBeenCalledWith(
         'Failed to update check: Update failed'
+      );
+    });
+
+    it('should update check with failure summary on error', async () => {
+      mockOctokit.rest.checks.update.mockResolvedValueOnce({});
+
+      await updateCheckFailure(
+        mockOctokit,
+        'owner',
+        'repo',
+        12345,
+        'Test run failed'
+      );
+
+      expect(mockOctokit.rest.checks.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conclusion: 'failure',
+          output: expect.objectContaining({
+            title: 'Tester Army: Error',
+            summary: 'Test run failed',
+          }),
+        })
       );
     });
   });

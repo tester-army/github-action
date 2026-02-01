@@ -84,6 +84,40 @@ export async function updateCheck(
 }
 
 /**
+ * Updates an existing GitHub Check with an error message
+ */
+export async function updateCheckFailure(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  checkRunId: number,
+  message: string
+): Promise<void> {
+  core.debug(`Updating check #${checkRunId} with failure`);
+
+  try {
+    await octokit.rest.checks.update({
+      owner,
+      repo,
+      check_run_id: checkRunId,
+      status: 'completed',
+      conclusion: 'failure',
+      completed_at: new Date().toISOString(),
+      output: {
+        title: 'Tester Army: Error',
+        summary: message,
+      },
+    });
+
+    core.info(`Updated check #${checkRunId}: failure`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    core.warning(`Failed to update check: ${errorMessage}`);
+    throw error;
+  }
+}
+
+/**
  * Formats the check title based on test results
  */
 function formatCheckTitle(result: CITestResponse): string {
