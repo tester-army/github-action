@@ -14,6 +14,7 @@ This GitHub Action automatically tests your Vercel preview deployments using AI-
 - ✅ Creates GitHub Checks with pass/fail status
 - 📸 Captures screenshots during testing
 - 🎭 Generates Playwright code for reproducible tests
+- 🧭 Uses PR context (title/description/changed files) to target tests
 
 ## Quick Start
 
@@ -30,6 +31,10 @@ jobs:
   test:
     if: github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
     steps:
       - uses: tester-army/github-action@v1
         with:
@@ -60,7 +65,7 @@ That's it! The action will automatically run tests when Vercel deployments succe
 | Output | Description |
 |--------|-------------|
 | `result` | Test result status (`passed` or `failed`) |
-| `report-url` | URL to the full test report |
+| `report-url` | First screenshot URL (if available) |
 | `summary` | Brief summary of test results |
 
 ## Example Workflows
@@ -168,7 +173,7 @@ PR Created → Vercel Deploys → deployment_status Event → Tester Army Tests 
 The action:
 1. Listens for `deployment_status` events with `state: success`
 2. Extracts the preview URL from the deployment
-3. Fetches PR context (title, description, changed files)
+3. Fetches PR context (title, description, changed files) using `GITHUB_TOKEN`
 4. Runs AI-powered tests on the preview
 5. Posts results as a PR comment and GitHub Check
 
@@ -199,7 +204,7 @@ with:
 
 ### No comment appears on PR
 
-The action needs write permissions. Add to your workflow:
+The action needs write permissions and a `GITHUB_TOKEN`. Add to your workflow:
 ```yaml
 permissions:
   contents: read
