@@ -48,7 +48,7 @@ describe('TesterArmyClient', () => {
 
       expect(result).toEqual(successResponse);
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://tester.army/v1/ci/test',
+        'https://tester.army/api/v1/ci/test',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
@@ -73,7 +73,7 @@ describe('TesterArmyClient', () => {
       await client.runCITest(testRequest);
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://staging.testerarmy.com/v1/ci/test',
+        'https://staging.testerarmy.com/api/v1/ci/test',
         expect.any(Object)
       );
     });
