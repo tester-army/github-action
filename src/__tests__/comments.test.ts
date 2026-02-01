@@ -41,32 +41,39 @@ describe('comments', () => {
   });
 
   const passedResult: CITestResponse = {
-    id: 'result-1',
-    status: 'passed',
-    summary: 'All tests passed successfully',
-    details: 'Test 1: Passed\nTest 2: Passed',
-    screenshots: [
-      'https://example.com/screenshot1.png',
-      'https://example.com/screenshot2.png',
-    ],
-    playwrightCode: 'test("example", async ({ page }) => { await page.goto("/"); });',
+    output: {
+      featureName: 'Login flow',
+      result: 'PASS',
+      description: 'All tests passed successfully',
+      screenshots: [
+        'https://example.com/screenshot1.png',
+        'https://example.com/screenshot2.png',
+      ],
+      playwrightCode:
+        'test("example", async ({ page }) => { await page.goto("/"); });',
+    },
+    testPlan: {
+      instructions: 'Test login flow',
+      focusAreas: ['auth'],
+      complexity: 'simple',
+    },
     duration: 45000,
-    passedTests: 3,
-    failedTests: 0,
-    totalTests: 3,
   };
 
   const failedResult: CITestResponse = {
-    id: 'result-2',
-    status: 'failed',
-    summary: 'Some tests failed',
-    details: 'Test 1: Passed\nTest 2: Failed - Element not found',
-    screenshots: ['https://example.com/fail.png'],
-    playwrightCode: undefined,
+    output: {
+      featureName: 'Checkout flow',
+      result: 'FAILED',
+      description: 'Some tests failed',
+      screenshots: ['https://example.com/fail.png'],
+      playwrightCode: '',
+    },
+    testPlan: {
+      instructions: 'Test checkout flow',
+      focusAreas: ['payments'],
+      complexity: 'moderate',
+    },
     duration: 90500,
-    passedTests: 1,
-    failedTests: 2,
-    totalTests: 3,
   };
 
   describe('postOrUpdateComment', () => {

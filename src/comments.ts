@@ -93,8 +93,8 @@ export function formatComment(
   result: CITestResponse,
   deploymentUrl: string
 ): string {
-  const statusEmoji = result.status === 'passed' ? '✅' : '❌';
-  const statusText = result.status === 'passed' ? 'Passed' : 'Failed';
+  const statusEmoji = result.output.result === 'PASS' ? '✅' : '❌';
+  const statusText = result.output.result === 'PASS' ? 'Passed' : 'Failed';
   const duration = formatDuration(result.duration);
 
   const sections: string[] = [
@@ -108,35 +108,39 @@ export function formatComment(
   ];
 
   // Summary
-  if (result.summary) {
+  if (result.output.description) {
     sections.push('### Summary');
-    sections.push(`> ${result.summary}`);
+    sections.push(`> ${result.output.description}`);
     sections.push('');
   }
 
-  // Results details
-  if (result.details) {
-    sections.push('### Results');
-    sections.push(result.details);
+  // Test plan
+  if (result.testPlan?.instructions) {
+    sections.push('### Test Plan');
+    sections.push(result.testPlan.instructions);
+    if (result.testPlan.focusAreas.length > 0) {
+      sections.push('');
+      sections.push(`**Focus Areas:** ${result.testPlan.focusAreas.join(', ')}`);
+    }
     sections.push('');
   }
 
   // Screenshots
-  if (result.screenshots && result.screenshots.length > 0) {
+  if (result.output.screenshots && result.output.screenshots.length > 0) {
     sections.push('### Screenshots');
-    result.screenshots.forEach((url, i) => {
+    result.output.screenshots.forEach((url, i) => {
       sections.push(`![Screenshot ${i + 1}](${url})`);
     });
     sections.push('');
   }
 
   // Playwright code
-  if (result.playwrightCode) {
+  if (result.output.playwrightCode) {
     sections.push('<details>');
     sections.push('<summary>📝 Generated Playwright Code</summary>');
     sections.push('');
     sections.push('```typescript');
-    sections.push(result.playwrightCode);
+    sections.push(result.output.playwrightCode);
     sections.push('```');
     sections.push('');
     sections.push('</details>');
