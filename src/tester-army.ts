@@ -84,7 +84,7 @@ async function executeRequest(
   const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const response = await fetch(`${baseUrl}/v1/ci/test`, {
+    const response = await fetch(`${baseUrl}/api/v1/ci/test`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
