@@ -43,7 +43,11 @@ const VERCEL_URL_PATTERNS = [
  */
 function parseUrl(url: string): URL | null {
   try {
-    return new URL(url);
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -96,9 +100,10 @@ export function extractDeploymentInfo(
   const deploymentStatus = payload.deployment_status as DeploymentStatusPayload;
 
   // Only process successful deployments
-  const state = deploymentStatus.state;
+  const rawState = deploymentStatus.state;
+  const state = typeof rawState === 'string' ? rawState.toLowerCase() : undefined;
   if (state !== 'success') {
-    core.debug(`Deployment state is not success (got: ${state})`);
+    core.debug(`Deployment state is not success (got: ${rawState ?? 'undefined'})`);
     return null;
   }
 

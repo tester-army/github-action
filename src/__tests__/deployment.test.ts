@@ -149,6 +149,17 @@ describe('extractDeploymentInfo', () => {
       }
       expect(result.environment).toBe('Production');
     });
+
+    it('should accept success state with different casing', () => {
+      const context = createMockContext({
+        state: 'Success',
+        targetUrl: 'https://my-app.vercel.app',
+      });
+
+      const result = extractDeploymentInfo(context);
+
+      expect(result).not.toBeNull();
+    });
   });
 
   describe('pending state', () => {
@@ -307,6 +318,20 @@ describe('extractDeploymentInfo', () => {
       expect(result).toBeNull();
       expect(core.warning).toHaveBeenCalledWith(
         'Invalid target_url format: not-a-valid-url'
+      );
+    });
+
+    it('should return null for non-http protocols', () => {
+      const context = createMockContext({
+        state: 'success',
+        targetUrl: 'ftp://my-app.vercel.app',
+      });
+
+      const result = extractDeploymentInfo(context);
+
+      expect(result).toBeNull();
+      expect(core.warning).toHaveBeenCalledWith(
+        'Invalid target_url format: ftp://my-app.vercel.app'
       );
     });
   });
