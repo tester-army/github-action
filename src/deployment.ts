@@ -21,6 +21,7 @@ export interface DeploymentInfo {
 interface DeploymentStatusPayload {
   state?: string;
   target_url?: string;
+  environment_url?: string;
   environment?: string;
   description?: string;
 }
@@ -107,22 +108,32 @@ export function extractDeploymentInfo(
     return null;
   }
 
-  // Extract target URL
-  const targetUrl = deploymentStatus.target_url;
-  if (!targetUrl || typeof targetUrl !== 'string') {
-    core.warning('Missing or invalid target_url in deployment_status');
+  // Extract environment
+  const environment = deploymentStatus.environment ?? 'unknown';
+  const environmentLower = typeof environment === 'string' ? environment.toLowerCase() : 'unknown';
+
+  if (environmentLower === 'production') {
+    core.info('Skipping production deployment');
+    return null;
+  }
+
+  // Prefer environment_url when present (often the preview alias), otherwise target_url
+  const candidateUrl =
+    typeof deploymentStatus.environment_url === 'string'
+      ? deploymentStatus.environment_url
+      : deploymentStatus.target_url;
+
+  if (!candidateUrl || typeof candidateUrl !== 'string') {
+    core.warning('Missing or invalid deployment URL in deployment_status');
     return null;
   }
 
   // Validate URL format and check if it's Vercel in one parse
-  const parsedUrl = parseUrl(targetUrl);
+  const parsedUrl = parseUrl(candidateUrl);
   if (!parsedUrl) {
-    core.warning(`Invalid target_url format: ${targetUrl}`);
+    core.warning(`Invalid deployment URL format: ${candidateUrl}`);
     return null;
   }
-
-  // Extract environment
-  const environment = deploymentStatus.environment ?? 'unknown';
 
   // Extract SHA from deployment or context
   let sha: string;
@@ -138,11 +149,11 @@ export function extractDeploymentInfo(
   // Check if it's a Vercel deployment (reuses already parsed URL)
   const isVercel = isVercelUrl(parsedUrl);
 
-  core.info(`Extracted deployment info: ${targetUrl} (${environment})`);
+  core.info(`Extracted deployment info: ${parsedUrl.toString()} (${environment})`);
   core.debug(`SHA: ${sha}, Vercel: ${isVercel}`);
 
   return {
-    url: targetUrl,
+    url: parsedUrl.toString(),
     environment,
     sha,
     isVercel,

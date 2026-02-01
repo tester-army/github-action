@@ -20,6 +20,7 @@ vi.mock('@actions/core', () => ({
 function createMockContext(options: {
   state: string;
   targetUrl?: string;
+  environmentUrl?: string;
   environment?: string;
   sha?: string;
   eventName?: string;
@@ -41,6 +42,7 @@ function createMockContext(options: {
       deployment_status: {
         state: options.state,
         target_url: options.targetUrl,
+        environment_url: options.environmentUrl,
         environment: options.environment,
         description: 'Deployment completed',
       },
@@ -108,14 +110,30 @@ describe('extractDeploymentInfo', () => {
       const result = extractDeploymentInfo(context);
 
       expect(result).toEqual<DeploymentInfo>({
-        url: 'https://my-app-abc123.vercel.app',
+        url: 'https://my-app-abc123.vercel.app/',
         environment: 'Preview',
         sha: 'abc123def456',
         isVercel: true,
       });
       expect(core.info).toHaveBeenCalledWith(
-        'Extracted deployment info: https://my-app-abc123.vercel.app (Preview)'
+        'Extracted deployment info: https://my-app-abc123.vercel.app/ (Preview)'
       );
+    });
+
+    it('should prefer environment_url when present', () => {
+      const context = createMockContext({
+        state: 'success',
+        targetUrl: 'https://deployment-abc123.vercel.app',
+        environmentUrl: 'https://my-app-git-branch.vercel.app',
+        environment: 'Preview',
+      });
+
+      const result = extractDeploymentInfo(context);
+
+      if (result === null) {
+        throw new Error('Expected result to not be null');
+      }
+      expect(result.url).toBe('https://my-app-git-branch.vercel.app/');
     });
 
     it('should extract info from a non-Vercel deployment', () => {
@@ -131,11 +149,11 @@ describe('extractDeploymentInfo', () => {
       if (result === null) {
         throw new Error('Expected result to not be null');
       }
-      expect(result.url).toBe('https://preview.mycompany.com');
+      expect(result.url).toBe('https://preview.mycompany.com/');
       expect(result.isVercel).toBe(false);
     });
 
-    it('should extract Production environment', () => {
+    it('should skip Production environment', () => {
       const context = createMockContext({
         state: 'success',
         targetUrl: 'https://my-app.vercel.app',
@@ -144,10 +162,8 @@ describe('extractDeploymentInfo', () => {
 
       const result = extractDeploymentInfo(context);
 
-      if (result === null) {
-        throw new Error('Expected result to not be null');
-      }
-      expect(result.environment).toBe('Production');
+      expect(result).toBeNull();
+      expect(core.info).toHaveBeenCalledWith('Skipping production deployment');
     });
 
     it('should accept success state with different casing', () => {
@@ -262,17 +278,18 @@ describe('extractDeploymentInfo', () => {
       );
     });
 
-    it('should return null when target_url is missing', () => {
+    it('should return null when deployment URL is missing', () => {
       const context = createMockContext({
         state: 'success',
         targetUrl: undefined,
+        environmentUrl: undefined,
       });
 
       const result = extractDeploymentInfo(context);
 
       expect(result).toBeNull();
       expect(core.warning).toHaveBeenCalledWith(
-        'Missing or invalid target_url in deployment_status'
+        'Missing or invalid deployment URL in deployment_status'
       );
     });
 
@@ -317,7 +334,7 @@ describe('extractDeploymentInfo', () => {
 
       expect(result).toBeNull();
       expect(core.warning).toHaveBeenCalledWith(
-        'Invalid target_url format: not-a-valid-url'
+        'Invalid deployment URL format: not-a-valid-url'
       );
     });
 
@@ -331,7 +348,7 @@ describe('extractDeploymentInfo', () => {
 
       expect(result).toBeNull();
       expect(core.warning).toHaveBeenCalledWith(
-        'Invalid target_url format: ftp://my-app.vercel.app'
+        'Invalid deployment URL format: ftp://my-app.vercel.app'
       );
     });
   });
