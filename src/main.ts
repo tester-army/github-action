@@ -1,6 +1,9 @@
 import * as core from '@actions/core';
+import * as github from '@actions/github';
 import { createClient } from './tester-army.js';
 import { getGitHubContext, formatSummary } from './github.js';
+import { extractDeploymentInfo } from './deployment.js';
+import { fetchPRContext } from './pr-context.js';
 import type { ActionInputs, TestCredentials, CITestRequest } from './types.js';
 
 function getInputs(): ActionInputs {
@@ -47,23 +50,51 @@ async function run(): Promise<void> {
 
     const client = createClient(inputs.apiKey, { timeout: inputs.timeout });
 
-    // TODO: In production, deploymentUrl comes from deployment extraction
-    // and prContext comes from PR context fetching
+    const deploymentInfo = extractDeploymentInfo(github.context);
+    if (!deploymentInfo) {
+      core.setFailed('No successful deployment_status event with target_url found');
+      return;
+    }
+
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) {
+      core.setFailed('Missing GITHUB_TOKEN for PR context lookup');
+      return;
+    }
+
+    const octokit = github.getOctokit(githubToken);
+    const { owner, repo } = github.context.repo;
+    const prContext = await fetchPRContext(
+      octokit,
+      owner,
+      repo,
+      deploymentInfo.sha
+    );
+
+    if (!prContext) {
+      core.setFailed('Unable to resolve PR context for deployment');
+      return;
+    }
+
     const request: CITestRequest = {
-      url: 'https://preview.example.com', // Placeholder
+      url: deploymentInfo.url,
       context: {
-        title: 'PR Title', // Placeholder
-        description: 'PR Description', // Placeholder
-        changedFiles: ['README.md'], // Placeholder
+        title: prContext.title,
+        description: prContext.description,
+        changedFiles: prContext.changedFiles,
       },
       credentials,
     };
 
     const result = await client.runCITest(request);
 
+    const normalizedResult =
+      result.output.result === 'PASS' ? 'passed' : 'failed';
+
     // Set outputs
-    core.setOutput('result', result.output.result);
+    core.setOutput('result', normalizedResult);
     core.setOutput('summary', result.output.description);
+    core.setOutput('report-url', result.output.screenshots[0] ?? '');
 
     // Write job summary
     const summary = formatSummary(
