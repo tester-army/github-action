@@ -1,13 +1,11 @@
-import type {
-  CITestRequest,
-  CITestResponse,
+import {
   BadRequestError,
   UnauthorizedError,
   RateLimitError,
   TimeoutError,
   ServerError,
-  TesterArmyError,
 } from './types.js';
+import type { CITestRequest, CITestResponse, TesterArmyError } from './types.js';
 
 const DEFAULT_BASE_URL = 'https://api.testerarmy.com';
 const DEFAULT_TIMEOUT = 300000; // 5 minutes
@@ -108,12 +106,7 @@ async function executeRequest(
     clearTimeout(timeoutId);
 
     if (error instanceof Error && error.name === 'AbortError') {
-      const err = new Error(
-        `Request timed out after ${timeout}ms`
-      ) as Error & { statusCode: number };
-      err.statusCode = 504;
-      err.name = 'TimeoutError';
-      throw err;
+      throw new TimeoutError(`Request timed out after ${timeout}ms`);
     }
 
     throw error;
@@ -136,39 +129,25 @@ async function handleErrorResponse(response: Response): Promise<never> {
     errorBody?.message ?? response.statusText ?? 'Unknown error';
 
   switch (response.status) {
-    case 400: {
-      const err = new Error(message) as BadRequestError;
-      err.name = 'BadRequestError';
-      (err as unknown as { statusCode: number }).statusCode = 400;
-      throw err;
-    }
-    case 401: {
-      const err = new Error(message) as UnauthorizedError;
-      err.name = 'UnauthorizedError';
-      (err as unknown as { statusCode: number }).statusCode = 401;
-      throw err;
-    }
+    case 400:
+      throw new BadRequestError(message);
+    case 401:
+      throw new UnauthorizedError(message);
     case 429: {
-      const retryAfter = response.headers.get('Retry-After');
-      const err = new Error(message) as RateLimitError;
-      err.name = 'RateLimitError';
-      (err as unknown as { statusCode: number }).statusCode = 429;
-      (err as unknown as { retryAfter: number | undefined }).retryAfter =
-        retryAfter ? parseInt(retryAfter, 10) : undefined;
-      throw err;
+      const retryAfterHeader = response.headers.get('Retry-After');
+      const retryAfter = retryAfterHeader
+        ? Number.parseInt(retryAfterHeader, 10)
+        : undefined;
+      throw new RateLimitError(
+        message,
+        Number.isFinite(retryAfter) ? retryAfter : undefined
+      );
     }
-    case 504: {
-      const err = new Error(message) as TimeoutError;
-      err.name = 'TimeoutError';
-      (err as unknown as { statusCode: number }).statusCode = 504;
-      throw err;
-    }
+    case 504:
+      throw new TimeoutError(message);
     default:
       if (response.status >= 500) {
-        const err = new Error(message) as ServerError;
-        err.name = 'ServerError';
-        (err as unknown as { statusCode: number }).statusCode = response.status;
-        throw err;
+        throw new ServerError(message, response.status);
       }
       throw new Error(`Tester Army API error (${response.status}): ${message}`);
   }
