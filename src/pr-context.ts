@@ -53,6 +53,7 @@ export async function fetchPRContext(
         owner,
         repo,
         commit_sha: sha,
+        per_page: 100,
       });
 
     if (pulls.length === 0) {
@@ -170,7 +171,13 @@ function handleAPIError(error: unknown, sha: string): void {
  */
 function isRateLimitError(error: unknown): boolean {
   if (error && typeof error === 'object' && 'status' in error) {
-    return (error as { status: number }).status === 403;
+    const status = (error as { status: number }).status;
+    if (status !== 403) {
+      return false;
+    }
+    const message =
+      'message' in error ? String((error as { message?: string }).message) : '';
+    return message.toLowerCase().includes('rate limit');
   }
   return false;
 }
